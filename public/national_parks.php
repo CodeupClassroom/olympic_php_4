@@ -88,7 +88,11 @@ extract(pageController($connection));
 					</tr>
 					<?php foreach($parks as $park): ?>
 						<tr>
-							<td><?= $park['name'] ?></td>
+							<td>
+                                <a href="park.php?id=<?= $park['id'] ?>">
+                                    <?= $park['name'] ?>
+                                </a>
+                            </td>
 							<td><?= $park['location'] ?></td>
 							<td><?= $park['area_in_acres']?></td>
 							<td><?= $park['date_established']?></td>
