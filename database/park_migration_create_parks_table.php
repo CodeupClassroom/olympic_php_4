@@ -16,6 +16,7 @@ $createParksTable = 'CREATE TABLE if not exists parks (
     location VARCHAR(255) NOT NULL,
     date_established DATE NOT NULL,
     area_in_acres DOUBLE NOT NULL,
+    description VARCHAR(512),
     PRIMARY KEY (id)
 )';
 

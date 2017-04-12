@@ -17,9 +17,21 @@ function getPaginatedParks($connection, $page, $limit) {
 	// offset = (pageNumber -1) * limit
 	$offset = ($page - 1) * $limit;
 
-	$select = "SELECT * from parks limit $limit offset $offset";
-	$statement = $connection->query($select);
-	return $statement->fetchAll(PDO::FETCH_ASSOC); 
+	$select = "SELECT * from parks limit :limit offset :offset";
+
+	$statement = $connection->prepare($select);
+
+	$statement->bindValue(':limit', $limit, PDO::PARAM_INT);
+	$statement->bindValue(':offset', $offset, PDO::PARAM_INT);
+
+	$result = $statement->execute();
+
+	if($result) {
+		return $statement->fetchAll(PDO::FETCH_ASSOC); 
+	} else {
+		return [];
+	}
+
 }
 
 function handleOutOfRangeRequests($page, $lastPage) {
@@ -33,7 +45,53 @@ function handleOutOfRangeRequests($page, $lastPage) {
 	}
 }
 
+function validateDate($date)
+{
+    $d = DateTime::createFromFormat('Y-m-d', $date);
+    return $d && $d->format('Y-m-d') === $date;
+}
+
+
+function inputsAreValid() {
+	// date_established can't be empty and needs to be a date
+	// area_in_acres can't be empty and needs to be a float
+	// description can't be empty
+	
+	if(!empty($_POST['name']) &&
+		!empty($_POST['location']) &&
+		!empty($_POST['area_in_acres']) &&
+		!empty($_POST['date_established']) && 
+		is_numeric($_POST['area_in_acres']) &&
+		validateDate($_POST['date_established'])) {
+
+		return true;
+
+	} else {
+		return false;
+	}
+
+}
+
+function insertPark($connection) {
+	$insert = "INSERT INTO parks (name, location, area_in_acres, date_established, description) VALUES (:name, :location, :area_in_acres, :date_established, :description);";
+	
+	$statement = $connection->prepare($insert);
+	$statement->bindValue(":name", $_POST['name'], PDO::PARAM_STR);
+	$statement->bindValue(":location", $_POST['location'], PDO::PARAM_STR);
+	$statement->bindValue(":area_in_acres", $_POST['area_in_acres'], PDO::PARAM_STR);
+	$statement->bindValue(":date_established", $_POST['date_established'], PDO::PARAM_STR);
+	$statement->bindValue(":description", $_POST['description'], PDO::PARAM_STR);
+
+	$statement->execute();
+
+}
+
+
 function pageController($connection) {
+
+	if(!empty($_POST) && inputsAreValid()) {
+		insertPark($connection);
+	}
 
 	$data = [];
 	
@@ -78,7 +136,46 @@ extract(pageController($connection));
 		<main class="container">
 			<h1>Welcome to National Parks</h1>
 
-			<section class="parks">
+			<section class="col-md-6">
+				<form class="form-horizontal" method="POST" action="national_parks.php">
+					<div class="form-group">
+			    		<label for="name" class="col-sm-4 control-label">Park Name: </label>
+			    		<div class="col-sm-8">
+			      			<input type="text" name="name" class="form-control" id="name" placeholder="Park Name">
+			    		</div>
+			  	</div>
+				<form class="form-horizontal">
+					<div class="form-group">
+			    		<label for="location" class="col-sm-4 control-label">Location:</label>
+			    		<div class="col-sm-8">
+			      			<input type="text" name="location" class="form-control" id="location" placeholder="Location">
+			    		</div>
+			  	</div>
+				<form class="form-horizontal">
+					<div class="form-group">
+			    		<label for="area_in_acres" class="col-sm-4 control-label">Area in acres:</label>
+			    		<div class="col-sm-8">
+			      			<input type="text" name="area_in_acres" class="form-control" id="area_in_acres" placeholder="Area in acres">
+			    		</div>
+			  	</div>
+				<form class="form-horizontal">
+					<div class="form-group">
+			    		<label for="date_established" class="col-sm-4 control-label">Date Established:</label>
+			    		<div class="col-sm-8">
+			      			<input type="text" name="date_established" class="form-control" id="date_established" placeholder="Date Established">
+			    		</div>
+			  	</div>
+				<form class="form-horizontal">
+					<div class="form-group">
+			    		<label for="description" class="col-sm-4 control-label">Description:</label>
+			    		<div class="col-sm-8">
+			      			<input type="text" name="description" class="form-control" id="description" placeholder="Description">
+			    		</div>
+			  	</div>
+			  	<button class="btn btn-default" type="submit">Add Park</button>
+				</form>
+			</section>
+			<section class="col-md-6">
 				<table class="table table-striped">
 					<tr>
 						<th>Park Name: </th>
