@@ -17,12 +17,19 @@ $parks = [
     ['name' => 'Joshua Tree', 'area_in_acres' => '789745.47',  'date_established' => '1994-10-31', 'location' => 'California']
 ];
 
+$query = "INSERT INTO parks (name, area_in_acres, date_established, location)
+        VALUES (:name, :area_in_acres, :date_established, :location);";
+
+$statement = $connection->prepare($query);
+
 foreach($parks as $park)
 {
-    $query = "INSERT INTO parks (name, area_in_acres, date_established, location)
-            VALUES ('{$park['name']}', '{$park['area_in_acres']}', '{$park['date_established']}', '{$park['location']}')";
-
-    $connection->exec($query);
+    $statement->bindValue(":name", $park['name'], PDO::PARAM_STR);
+    $statement->bindValue(":location", $park['location'], PDO::PARAM_STR);
+    $statement->bindValue(":date_established", $park['date_established'], PDO::PARAM_STR);
+    $statement->bindValue(":area_in_acres", $park['area_in_acres'], PDO::PARAM_STR);
+    $statement->execute();
 
     echo "Inserted ID: " . $connection->lastInsertId() . PHP_EOL;
 }
+

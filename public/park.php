@@ -1,8 +1,8 @@
 <?php
 require __DIR__ . '/../database/db-connection.php';
+require __DIR__ . '/../Input.php';
 
-
-$id = (int) $_REQUEST['id'];
+$id = (int) Input::get('id');
 //$selectOnePark = 'SELECT * FROM parks WHERE id = ?';
 $selectOnePark = 'SELECT * FROM parks WHERE id = :id';
 
