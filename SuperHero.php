@@ -1,26 +1,27 @@
 <?php
-require_once __DIR__ . "/Person.php";
 
-// Superhero is a Person
-// Boat is a Vehicle  class Boat extends Vehicle {}
-// Car is a Vehicle   class Car extends Vehicle {}
-// Dog is an Animal   class Dog extends Animal {}
-// Lion is an Animal  class Lion extends Animal {}
+require_once "Person.php";
 
-class SuperHero extends Person
-{
-    public $alterEgo;
+class Superhero extends Person {
+    public $pseudonym;
+    public $capeColor;
+    
+    public function __construct($firstName, $lastName, $pseudonym) {
+    	parent::__construct($firstName, $lastName);
+    	$this->pseudonym = $pseudonym;
+    }
+
+    public function fullName() {
+    	return $this->pseudonym;
+    }
 
     public function alterEgo()
     {
-        return $this->alterEgo;
+        return $this->firstName . ' ' . $this->lastName;
+    }
+
+    public function hasCape()
+    {
+        return !empty($this->capeColor);
     }
 }
-
-$luis = new Person("Luis", "Montealegre");
-echo $luis->fullName(), PHP_EOL;
-
-$dareDevil = new SuperHero("Matt", "Murdock");
-$dareDevil->alterEgo = "Daredevil";
-
-echo $dareDevil->alterEgo(), PHP_EOL;
