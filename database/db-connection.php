@@ -6,7 +6,7 @@
 // 3. Database name. employees
 // 4. username: vagrant
 // 5. password: vagrant
-require __DIR__ . '/../constants.php' ; // Don't forget the forward slash at the beginning, when using __DIR__
+require_once __DIR__ . '/../constants.php' ; // Don't forget the forward slash at the beginning, when using __DIR__
 
 try {
 
