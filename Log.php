@@ -2,13 +2,28 @@
 
 class Log {
 
-	public $filename;
-	public $handle;
+	private $filename;
+	private $handle;
 
 	public function __construct($prefix = "log") {
-		$this->filename = $prefix . "-" . date('Y-m-d') . ".log";
+        $this->setFilename($prefix);
 		$this->handle = fopen($this->filename, 'a');
 	}
+
+	private function setFilename($prefix)
+    {
+		$this->filename = $prefix . "-" . date('Y-m-d') . ".log";
+
+		if (!touch($this->filename)) {  // We can't write to this file
+            echo 'File is not readable', PHP_EOL;
+            exit;
+        }
+
+        if (!is_writable($this->filename)) {
+            echo 'File is not writable', PHP_EOL;
+            exit;
+        }
+    }
 
 	public function logMessage($level, $message) {
 		
