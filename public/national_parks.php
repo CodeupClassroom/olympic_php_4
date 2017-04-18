@@ -3,108 +3,62 @@
 // connect to db, present db connection as $connection variable
 require __DIR__ . '/../database/db-connection.php';
 require __DIR__ . '/../Input.php';
-
-// protect from looking at blank pages past the number of results
-# of results / limit to get number of total pages, round up
-function getLastPage($connection, $limit) {
-	$statement = $connection->query("SELECT count(*) from parks");
-	$count = $statement->fetch()[0]; // to get the count
-	$lastPage = ceil($count / $limit);
-	return $lastPage;
-}
-
-function getPaginatedParks($connection, $page, $limit) {
-	// offset = (pageNumber -1) * limit
-	$offset = ($page - 1) * $limit;
-
-	$select = "SELECT * from parks limit :limit offset :offset";
-
-	$statement = $connection->prepare($select);
-
-	$statement->bindValue(':limit', $limit, PDO::PARAM_INT);
-	$statement->bindValue(':offset', $offset, PDO::PARAM_INT);
-
-	$result = $statement->execute();
-
-	if($result) {
-		return $statement->fetchAll(PDO::FETCH_ASSOC); 
-	} else {
-		return [];
-	}
-
-}
-
-function handleOutOfRangeRequests($page, $lastPage) {
-	// protect from looking at negative pages, too high pages, and non-numeric pages
-	if($page < 1 || !is_numeric($page)) {
-		header("location: national_parks.php?page=1");
-		die;
-	} else if($page > $lastPage) {
-		header("location: national_parks.php?page=$lastPage");
-		die;
-	}
-}
-
-function validateDate($date)
-{
-    $d = DateTime::createFromFormat('Y-m-d', $date);
-    return $d && $d->format('Y-m-d') === $date;
-}
-
-
-function inputsAreValid() {
-	// date_established can't be empty and needs to be a date
-	// area_in_acres can't be empty and needs to be a float
-	// description can't be empty
-	
-	if(!empty($_POST['name']) &&
-		!empty($_POST['location']) &&
-		!empty($_POST['area_in_acres']) &&
-		!empty($_POST['date_established']) && 
-		is_numeric($_POST['area_in_acres']) &&
-		validateDate($_POST['date_established'])) {
-
-		return true;
-
-	} else {
-		return false;
-	}
-
-}
-
-function insertPark($connection) {
-	$insert = "INSERT INTO parks (name, location, area_in_acres, date_established, description) VALUES (:name, :location, :area_in_acres, :date_established, :description);";
-	
-	$statement = $connection->prepare($insert);
-	$statement->bindValue(":name", $_POST['name'], PDO::PARAM_STR);
-	$statement->bindValue(":location", $_POST['location'], PDO::PARAM_STR);
-	$statement->bindValue(":area_in_acres", $_POST['area_in_acres'], PDO::PARAM_STR);
-	$statement->bindValue(":date_established", $_POST['date_established'], PDO::PARAM_STR);
-	$statement->bindValue(":description", $_POST['description'], PDO::PARAM_STR);
-
-	$statement->execute();
-
-}
-
+require __DIR__ . '/../Park.php';
 
 function pageController($connection) {
-
-	if(!empty($_POST) && inputsAreValid()) {
-		insertPark($connection);
-	}
 
 	$data = [];
 	
 	$limit = 4;
-	$page = Input::get('page', 1);
 
-	$lastPage = getLastPage($connection, $limit);
+	// Get the page number or default it to 1
+	$data['page'] = Input::get('page', 1);
 
-	handleOutOfRangeRequests($page, $lastPage);
+	// Get the total number of pages to determine the last page
+	$data['lastPage'] = ceil(Park::count() / $limit);
 
-	$data['parks'] = getPaginatedParks($connection, $page, $limit);
-	$data['page'] = $page;
-	$data['lastPage'] = $lastPage;
+	// set empty errors array to hold exception messages when needed
+	$data['errors'] = [];
+
+	if(!empty($_POST)) {
+		$park = new Park();
+		
+		try {
+			$park->name = Input::getString('name');
+		} catch (Exception $e) {
+			$data['errors']['name'] = $e->getMessage();
+		}
+
+		try {
+			$park->location = Input::getString('location');
+		} catch (Exception $e) {
+			$data['errors']['location'] = $e->getMessage();
+		}
+
+		try {
+			$park->areaInAcres = Input::getNumber("area_in_acres");
+		} catch (Exception $e) {
+			$data['errors']['area_in_acres'] = $e->getMessage();
+		}
+
+		try {
+			$park->dateEstablished = Input::getDate('date_established');
+		} catch(Exception $e) {
+			$data['errors']['date_established'] = $e->getMessage();
+		}
+
+		try {
+			$park->description = Input::getString("description");		
+		} catch (Exception $e) {
+			$data['errors']['description'] = $e->getMessage();
+		}
+
+		if(empty($data['errors'])) {
+			$park->insert();
+		}
+	}
+
+	$data['parks'] = Park::paginate($data['page'], $limit);
 
 	return $data;
 }
@@ -137,41 +91,87 @@ extract(pageController($connection));
 			<h1>Welcome to National Parks</h1>
 
 			<section class="col-md-6">
+
 				<form class="form-horizontal" method="POST" action="national_parks.php">
-					<div class="form-group">
-			    		<label for="name" class="col-sm-4 control-label">Park Name: </label>
-			    		<div class="col-sm-8">
-			      			<input type="text" name="name" class="form-control" id="name" placeholder="Park Name">
-			    		</div>
-			  	</div>
-				<form class="form-horizontal">
-					<div class="form-group">
-			    		<label for="location" class="col-sm-4 control-label">Location:</label>
-			    		<div class="col-sm-8">
-			      			<input type="text" name="location" class="form-control" id="location" placeholder="Location">
-			    		</div>
-			  	</div>
-				<form class="form-horizontal">
-					<div class="form-group">
-			    		<label for="area_in_acres" class="col-sm-4 control-label">Area in acres:</label>
-			    		<div class="col-sm-8">
-			      			<input type="text" name="area_in_acres" class="form-control" id="area_in_acres" placeholder="Area in acres">
-			    		</div>
-			  	</div>
-				<form class="form-horizontal">
-					<div class="form-group">
-			    		<label for="date_established" class="col-sm-4 control-label">Date Established:</label>
-			    		<div class="col-sm-8">
-			      			<input type="text" name="date_established" class="form-control" id="date_established" placeholder="Date Established">
-			    		</div>
-			  	</div>
-				<form class="form-horizontal">
-					<div class="form-group">
-			    		<label for="description" class="col-sm-4 control-label">Description:</label>
-			    		<div class="col-sm-8">
-			      			<input type="text" name="description" class="form-control" id="description" placeholder="Description">
-			    		</div>
-			  	</div>
+			      	<?php if(empty($errors['name'])): ?>
+						<div class="form-group">
+			    			<label for="name" class="col-sm-4 control-label">Park Name: </label>
+			    			<div class="col-sm-8">
+			      				<input type="text" name="name" class="form-control" id="name" placeholder="Park Name">
+					      	</div>
+					  	</div>
+			      	<?php else: ?>
+			      		<div class="form-group has-error">
+			    			<label for="name" class="col-sm-4 control-label">Park Name: </label>
+			    			<div class="col-sm-8">
+			      				<input type="text" name="name" class="has-error form-control" id="name" placeholder="<?= $errors['name'] ?>">
+					      	</div>
+					  	</div>
+			      			
+			      	<?php endif; ?>
+					
+					<?php if(empty($errors['location'])): ?>
+						<div class="form-group">
+				    		<label for="location" class="col-sm-4 control-label">Location:</label>
+				    		<div class="col-sm-8">
+				      			<input type="text" name="location" class="form-control" id="location" placeholder="Location">
+				    		</div>
+				  		</div>
+				  	<?php else: ?>
+				  		<div class="form-group has-error">
+				    		<label for="location" class="col-sm-4 control-label">Location:</label>
+				    		<div class="col-sm-8">
+				      			<input type="text" name="location" class="form-control" id="location" placeholder="<?= $errors['location'] ?>">
+				    		</div>
+				  		</div>
+			  		<?php endif; ?>
+			  		
+			  		<?php if(empty($errors['area_in_acres'])): ?>
+						<div class="form-group">
+				    		<label for="area_in_acres" class="col-sm-4 control-label">Area in acres:</label>
+				    		<div class="col-sm-8">
+				      			<input type="text" name="area_in_acres" class="form-control" id="area_in_acres" placeholder="Area in acres">
+				    		</div>
+				  		</div>
+				  	<?php else: ?>
+				  		<div class="form-group has-error">
+				    		<label for="area_in_acres" class="col-sm-4 control-label">Area in acres:</label>
+				    		<div class="col-sm-8">
+				      			<input type="text" name="area_in_acres" class="form-control" id="area_in_acres" placeholder="<?= $errors['area_in_acres'] ?>">
+				    		</div>
+				  		</div>
+				  	<?php endif; ?>
+				  	<?php if(empty($errors['date_established'])): ?>
+				  		<div class="form-group">
+				    		<label for="date_established" class="col-sm-4 control-label">Date Established:</label>
+				    		<div class="col-sm-8">
+				      			<input type="text" name="date_established" class="form-control" id="date_established" placeholder="Date Established YYYY-MM-DD">
+				    		</div>
+				  		</div>
+				  	<?php else: ?>
+						<div class="form-group has-error">
+				    		<label for="date_established" class="col-sm-4 control-label">Date Established:</label>
+				    		<div class="col-sm-8">
+				      			<input type="text" name="date_established" class="form-control" id="date_established" placeholder="<?= $errors['date_established']?>">
+				    		</div>
+				  		</div>
+			  		<?php endif; ?>
+
+			  		<?php if(empty($errors['description'])): ?>
+						<div class="form-group">
+			    			<label for="description" class="col-sm-4 control-label">Description:</label>
+			    			<div class="col-sm-8">
+			      				<input type="text" name="description" class="form-control" id="description" placeholder="Description">
+			    			</div>
+			  			</div>
+			  		<?php else: ?>
+			  			<div class="form-group has-error">
+			    			<label for="description" class="col-sm-4 control-label">Description:</label>
+			    			<div class="col-sm-8">
+			      				<input type="text" name="description" class="form-control" id="description" placeholder="<?= $errors['description'] ?>">
+			    			</div>
+			  			</div>
+			  		<?php endif; ?>
 			  	<button class="btn btn-default" type="submit">Add Park</button>
 				</form>
 			</section>
@@ -186,13 +186,13 @@ extract(pageController($connection));
 					<?php foreach($parks as $park): ?>
 						<tr>
 							<td>
-                                <a href="park.php?id=<?= $park['id'] ?>">
-                                    <?= $park['name'] ?>
+                                <a href="park.php?id=<?= $park->id ?>">
+                                    <?= $park->name ?>
                                 </a>
                             </td>
-							<td><?= $park['location'] ?></td>
-							<td><?= $park['area_in_acres']?></td>
-							<td><?= $park['date_established']?></td>
+							<td><?= $park->location ?></td>
+							<td><?= $park->area_in_acres?></td>
+							<td><?= $park->date_established?></td>
 						</tr>
 					<?php endforeach; ?>	
 				</table>

@@ -2,6 +2,45 @@
 
 class Input
 {
+    // getNumber throws an exception if the value at $key ain't numeric.
+    public static function getNumber($key) {
+        $input = self::get($key);
+
+        if(!is_numeric($input)) {
+            throw new Exception("Input for $key must be a number.");
+        } else if(empty($input)) {
+            throw new Exception("Input for $key cannot be empty");
+        }
+
+        return $input;
+    }
+
+    public static function getString($key) {
+        $input = self::get($key);
+
+        if(is_numeric($input) || !is_string($input)) {
+            throw new Exception("Input for $key must be a string");
+        } else if(empty($input)) {
+            throw new Exception("Input for $key cannot be empty");
+        }
+
+        return $input;
+
+    }
+
+    public static function getDate($key) {
+        $input = self::get($key);
+
+        $date = DateTime::createFromFormat('Y-m-d', $input);
+
+        if(!$date) {
+            throw new Exception("$key must be in the YYYY-MM-DD format");
+        }
+
+        return $input;
+        
+    }
+
     /**
      * Check if a given value was passed in the request
      *
